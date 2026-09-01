@@ -474,12 +474,14 @@ export interface ProvedorApi {
 export type DataProviderConfig = ProvedorApi;
 
 export interface PlanoCreditos {
-  tipo: 'BASIC' | 'PRO' | 'PREMIUM' | 'ENTERPRISE';
+  tipo: 'BASIC' | 'PRO' | 'PREMIUM' | 'ENTERPRISE' | 'UNLIMITED' | 'ILIMITADO';
   limiteMensal: number;
   creditosUtilizados: number;
   creditosDisponiveis: number;
   dataRenovacao: string;
   valorMensal?: string;
+  isUnlimited?: boolean;
+  acessoTotal?: boolean;
 }
 
 export type PlanoUsuario = PlanoCreditos;

@@ -155,14 +155,12 @@ export default function App() {
     setSelectedPerson(null);
     setPersonSearchResults(null);
 
-    // Consume 1 credit
-    if (currentPlan.creditosDisponiveis > 0) {
-      setCurrentPlan(prev => ({
-        ...prev,
-        creditosUtilizados: prev.creditosUtilizados + 1,
-        creditosDisponiveis: Math.max(0, prev.creditosDisponiveis - 1)
-      }));
-    }
+    // Update credits usage statistics
+    setCurrentPlan(prev => ({
+      ...prev,
+      creditosUtilizados: prev.creditosUtilizados + 1,
+      creditosDisponiveis: (prev.isUnlimited || prev.tipo === 'UNLIMITED') ? 999999 : Math.max(0, prev.creditosDisponiveis - 1)
+    }));
 
     try {
       if (type === 'cnpj' || type === 'razao_social') {
@@ -462,7 +460,7 @@ export default function App() {
           }}
           favoritesCount={historyList.filter(h => h.favorito).length}
           monitoringCount={monitoredList.length}
-          isAdmin={currentUser.perfil === 'ADMINISTRADOR'}
+          isAdmin={true}
         />
 
         {/* Center Workspace Content */}

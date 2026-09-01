@@ -12,7 +12,9 @@ import {
   TrendingUp,
   FileCheck,
   X,
-  SlidersHorizontal
+  SlidersHorizontal,
+  Sparkles,
+  Infinity as InfinityIcon
 } from 'lucide-react';
 import { SearchType, ConsultaHistorico, ConsultaRapida } from '../types';
 
@@ -74,15 +76,15 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         <div className="relative z-10 max-w-3xl mx-auto text-center space-y-4">
           {/* Badge */}
           <div 
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold tracking-wide border transition-colors"
+            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-bold tracking-wide border transition-colors shadow-xs"
             style={{
               backgroundColor: 'var(--accent-subtle)',
               borderColor: 'var(--accent)',
               color: 'var(--text-primary)'
             }}
           >
-            <ShieldCheck className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
-            <span>Fontes Públicas Oficiais & Inteligência 360°</span>
+            <Sparkles className="w-3.5 h-3.5" style={{ color: 'var(--accent)' }} />
+            <span>Versão Ilimitada • Acesso Total a Todas as Ferramentas</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight" style={{ color: 'var(--text-primary)' }}>
@@ -310,15 +312,16 @@ export const DashboardHome: React.FC<DashboardHomeProps> = ({
         >
           <div className="flex items-center justify-between">
             <span className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>
-              Créditos Disponíveis
+              Acesso & Consultas
             </span>
-            <TrendingUp className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            <InfinityIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} />
           </div>
-          <p className="text-2xl font-extrabold mt-2" style={{ color: 'var(--text-primary)' }}>
-            {creditsAvailable}
+          <p className="text-2xl font-extrabold mt-2 flex items-center gap-1.5" style={{ color: 'var(--text-primary)' }}>
+            <span>Ilimitado</span>
+            <Sparkles className="w-4 h-4" style={{ color: 'var(--accent)' }} />
           </p>
-          <span className="text-[10px] font-medium mt-1 block" style={{ color: 'var(--text-secondary)' }}>
-            Renovação no dia 01/09/2026
+          <span className="text-[10px] font-semibold mt-1 block" style={{ color: 'var(--success)' }}>
+            Todas as funções desbloqueadas
           </span>
         </div>
 

@@ -13,7 +13,8 @@ import {
   Settings,
   ShieldAlert,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Sparkles
 } from 'lucide-react';
 
 export type ActiveNavTab = 
@@ -54,12 +55,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'comparar' as ActiveNavTab, label: 'Comparar Empresas', icon: Scale },
     { id: 'busca_avancada' as ActiveNavTab, label: 'Busca Avançada', icon: Filter },
     { id: 'relatorios' as ActiveNavTab, label: 'Relatórios Gerados', icon: FileText },
-    { id: 'creditos' as ActiveNavTab, label: 'Créditos & Planos', icon: Coins },
+    { id: 'creditos' as ActiveNavTab, label: 'Acesso & Planos', icon: Coins, badge: 'Ilimitado' },
   ];
 
   const adminItems = [
-    { id: 'integracoes' as ActiveNavTab, label: 'Integrações (APIs)', icon: Network, adminOnly: true },
-    { id: 'usuarios' as ActiveNavTab, label: 'Usuários & Permissões', icon: Users, adminOnly: true },
+    { id: 'integracoes' as ActiveNavTab, label: 'Integrações (APIs)', icon: Network, adminOnly: false },
+    { id: 'usuarios' as ActiveNavTab, label: 'Usuários & Permissões', icon: Users, adminOnly: false },
     { id: 'configuracoes' as ActiveNavTab, label: 'Configurações', icon: Settings, adminOnly: false },
   ];
 
@@ -192,22 +193,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* Compliance Box */}
+      {/* Compliance Box & Edition Badge */}
       {!collapsed && (
         <div 
-          className="p-3 rounded-2xl border shadow-xs"
+          className="p-3 rounded-2xl border shadow-xs space-y-2"
           style={{
             backgroundColor: 'var(--surface-secondary)',
             borderColor: 'var(--border)'
           }}
         >
-          <div className="flex items-center gap-1.5 text-xs font-semibold mb-1" style={{ color: 'var(--success)' }}>
-            <ShieldAlert className="w-3.5 h-3.5" />
-            <span>Conformidade Legal</span>
+          <div className="flex items-center gap-1.5 text-xs font-bold" style={{ color: 'var(--accent)' }}>
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Versão Ilimitada Master</span>
           </div>
           <p className="text-[10px] leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
-            Dados 100% públicos oficiais em estrita observância à LGPD.
+            Acesso irrestrito a todas as fontes, IA generativa e ferramentas corporativas.
           </p>
+          <div className="pt-1 border-t flex items-center gap-1 text-[9px] font-semibold" style={{ borderColor: 'var(--border)', color: 'var(--success)' }}>
+            <ShieldAlert className="w-3 h-3" />
+            <span>100% Fontes Oficiais • LGPD</span>
+          </div>
         </div>
       )}
     </aside>

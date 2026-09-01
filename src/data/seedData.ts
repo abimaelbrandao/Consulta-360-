@@ -1462,110 +1462,9 @@ export const SEED_PESSOAS: PessoaData[] = [
 
 export const INITIAL_DATA_PROVIDERS: DataProviderConfig[] = [...MASTER_DATA_PROVIDERS];
 
-export const INITIAL_HISTORICO: ConsultaHistorico[] = [
-  {
-    id: 'hist-1',
-    termo: '00.000.000/0001-91',
-    tipo: 'cnpj',
-    nomeOuRazao: 'BANCO DO BRASIL SA',
-    identificador: '00.000.000/0001-91',
-    dataHora: '25/08/2026 09:15',
-    usuario: 'Carlos Silva (Analista)',
-    situacao: 'ATIVA',
-    favorito: true,
-    provedoresConsultados: ['BrasilAPI', 'Receita Federal', 'PGFN/CND'],
-    creditosConsumidos: 3
-  },
-  {
-    id: 'hist-2',
-    termo: '47.960.950/0001-21',
-    tipo: 'cnpj',
-    nomeOuRazao: 'MAGAZINE LUIZA S.A.',
-    identificador: '47.960.950/0001-21',
-    dataHora: '25/08/2026 09:12',
-    usuario: 'Carlos Silva (Analista)',
-    situacao: 'ATIVA',
-    favorito: true,
-    provedoresConsultados: ['BrasilAPI', 'SEFAZ-SP', 'DataJud CNJ'],
-    creditosConsumidos: 4
-  },
-  {
-    id: 'hist-3',
-    termo: '45.123.890/0001-55',
-    tipo: 'cnpj',
-    nomeOuRazao: 'AURORA ENERGIAS RENOVAVEIS E TECNOLOGIA LTDA',
-    identificador: '45.123.890/0001-55',
-    dataHora: '25/08/2026 08:30',
-    usuario: 'Dra. Vanessa Mendes',
-    situacao: 'ATIVA',
-    favorito: false,
-    provedoresConsultados: ['BrasilAPI', 'Simples Nacional', 'SEMFAZ'],
-    creditosConsumidos: 3
-  },
-  {
-    id: 'hist-4',
-    termo: 'Luiza Helena Trajano',
-    tipo: 'nome',
-    nomeOuRazao: 'LUIZA HELENA TRAJANO INACIO RODRIGUES',
-    identificador: 'Luiza Helena Trajano',
-    dataHora: '25/08/2026 09:00',
-    usuario: 'Carlos Silva (Analista)',
-    situacao: 'ENCONTRADO',
-    favorito: false,
-    provedoresConsultados: ['JUCESP', 'CVM', 'DOESP'],
-    creditosConsumidos: 2
-  }
-];
+export const INITIAL_HISTORICO: ConsultaHistorico[] = [];
 
-export const INITIAL_MONITORAMENTO: MonitoramentoEmpresa[] = [
-  {
-    id: 'mon-1',
-    cnpj: '47.960.950/0001-21',
-    razaoSocial: 'MAGAZINE LUIZA S.A.',
-    frequencia: 'Diária',
-    dataInicio: '10/01/2026',
-    ultimaVerificacao: '25/08/2026 06:00',
-    proximaVerificacao: '26/08/2026 06:00',
-    status: 'Ativo',
-    alteracoesDetectadas: 3,
-    alertas: [
-      {
-        id: 'alt-1',
-        data: '15/08/2026',
-        tipo: 'CERTIDAO',
-        descricao: 'Renovação da Certidão Negativa de Débitos Federais (RFB/PGFN) confirmada.',
-        lido: true
-      },
-      {
-        id: 'alt-2',
-        data: '02/08/2026',
-        tipo: 'QUADRO_SOCIETARIO',
-        descricao: 'Ata de reeleição de conselheiros arquivada na JUCESP.',
-        lido: false
-      }
-    ]
-  },
-  {
-    id: 'mon-2',
-    cnpj: '45.123.890/0001-55',
-    razaoSocial: 'AURORA ENERGIAS RENOVAVEIS E TECNOLOGIA LTDA',
-    frequencia: 'Semanal',
-    dataInicio: '01/03/2026',
-    ultimaVerificacao: '24/08/2026 06:00',
-    proximaVerificacao: '31/08/2026 06:00',
-    status: 'Ativo',
-    alteracoesDetectadas: 1,
-    alertas: [
-      {
-        id: 'alt-3',
-        data: '10/07/2026',
-        tipo: 'SITUACAO_CADASTRAL',
-        descricao: 'Situação cadastral confirmada como ATIVA perante a Receita Federal.',
-        lido: true
-      }
-    ]
-  }
-];
+export const INITIAL_MONITORAMENTO: MonitoramentoEmpresa[] = [];
 
 export const INITIAL_USUARIOS: Usuario[] = [
   {
@@ -1576,7 +1475,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     empresa: 'Compliance & Legal Intelligence 360',
     ativo: true,
     ultimoAcesso: 'Hoje às 09:16',
-    totalConsultas: 142
+    totalConsultas: 0
   },
   {
     id: 'usr-2',
@@ -1586,7 +1485,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     empresa: 'Compliance & Legal Intelligence 360',
     ativo: true,
     ultimoAcesso: 'Hoje às 09:12',
-    totalConsultas: 87
+    totalConsultas: 0
   },
   {
     id: 'usr-3',
@@ -1596,7 +1495,7 @@ export const INITIAL_USUARIOS: Usuario[] = [
     empresa: 'Compliance & Legal Intelligence 360',
     ativo: true,
     ultimoAcesso: 'Hoje às 08:45',
-    totalConsultas: 215
+    totalConsultas: 0
   },
   {
     id: 'usr-4',
@@ -1606,52 +1505,11 @@ export const INITIAL_USUARIOS: Usuario[] = [
     empresa: 'Compliance & Legal Intelligence 360',
     ativo: true,
     ultimoAcesso: 'Ontem às 17:30',
-    totalConsultas: 34
+    totalConsultas: 0
   }
 ];
 
-export const INITIAL_AUDIT_LOGS: AuditLog[] = [
-  {
-    id: 'log-1',
-    dataHora: '25/08/2026 09:15:22',
-    usuarioNome: 'Abimael Brandão',
-    usuario: 'Abimael Brandão (Administrador)',
-    acao: 'CONSULTA_CNPJ',
-    detalhes: 'Consulta 360° do CNPJ 00.000.000/0001-91 (Banco do Brasil SA)',
-    ip: '189.102.44.12',
-    ipOrigem: '189.102.44.12'
-  },
-  {
-    id: 'log-2',
-    dataHora: '25/08/2026 09:12:05',
-    usuarioNome: 'Carlos Silva',
-    usuario: 'Carlos Silva (Analista)',
-    acao: 'EXPORTACAO_PDF',
-    detalhes: 'Download de Relatório Premium da empresa MAGAZINE LUIZA S.A.',
-    ip: '177.89.201.55',
-    ipOrigem: '177.89.201.55'
-  },
-  {
-    id: 'log-3',
-    dataHora: '25/08/2026 09:00:18',
-    usuarioNome: 'Carlos Silva',
-    usuario: 'Carlos Silva (Analista)',
-    acao: 'CONSULTA_PESSOA',
-    detalhes: 'Busca por vínculos públicos da pessoa: Luiza Helena Trajano',
-    ip: '177.89.201.55',
-    ipOrigem: '177.89.201.55'
-  },
-  {
-    id: 'log-4',
-    dataHora: '25/08/2026 08:30:11',
-    usuarioNome: 'Dra. Vanessa Mendes',
-    usuario: 'Dra. Vanessa Mendes (Gestor)',
-    acao: 'CONFIG_INTEGRACAO',
-    detalhes: 'Verificação de conectividade com Provedor BrasilAPI e DataJud',
-    ip: '200.147.35.9',
-    ipOrigem: '200.147.35.9'
-  }
-];
+export const INITIAL_AUDIT_LOGS: AuditLog[] = [];
 
 // Aliases for clean frontend usage
 export const seedCompanies = SEED_EMPRESAS;
@@ -1662,54 +1520,27 @@ export const initialUsers = INITIAL_USUARIOS;
 export const initialAuditLogs = INITIAL_AUDIT_LOGS;
 export const initialApiProviders = INITIAL_DATA_PROVIDERS;
 
-export const initialAlerts: any[] = [
-  {
-    id: 'alt-1',
-    cnpj: '47.960.950/0001-21',
-    razaoSocial: 'MAGAZINE LUIZA S.A.',
-    dataHora: '25/08/2026 07:30',
-    tipoAlerta: 'CERTIDAO',
-    titulo: 'Certidão Negativa de Débitos Federais (PGFN) Renovada',
-    descricao: 'Emitida nova CND Federal com validade regular até 22/02/2027.',
-    lido: false
-  },
-  {
-    id: 'alt-2',
-    cnpj: '47.960.950/0001-21',
-    razaoSocial: 'MAGAZINE LUIZA S.A.',
-    dataHora: '20/08/2026 14:15',
-    tipoAlerta: 'QUADRO_SOCIETARIO',
-    titulo: 'Alteração no Conselho de Administração Registrada',
-    descricao: 'Ata de reeleição de conselheiros arquivada na JUCESP.',
-    lido: false
-  },
-  {
-    id: 'alt-3',
-    cnpj: '45.123.890/0001-55',
-    razaoSocial: 'AURORA ENERGIAS RENOVAVEIS E TECNOLOGIA LTDA',
-    dataHora: '10/08/2026 11:00',
-    tipoAlerta: 'SITUACAO_CADASTRAL',
-    titulo: 'Situação Cadastral Regularizada',
-    descricao: 'Situação cadastral confirmada como ATIVA perante a Receita Federal.',
-    lido: true
-  }
-];
+export const initialAlerts: any[] = [];
 
 export const initialPlan = {
-  tipo: 'PRO' as const,
-  limiteMensal: 500,
-  creditosUtilizados: 42,
-  creditosDisponiveis: 458,
-  dataRenovacao: '15/09/2026',
-  valorMensal: 'R$ 399/mês'
+  tipo: 'UNLIMITED' as const,
+  limiteMensal: 999999,
+  creditosUtilizados: 0,
+  creditosDisponiveis: 999999,
+  dataRenovacao: 'Acesso Vitalício Ilimitado',
+  valorMensal: 'Plano Master Ilimitado',
+  isUnlimited: true,
+  acessoTotal: true
 };
 
 export const INITIAL_QUICK_DEMOS = [
   { id: 'qd-1', label: 'Banco do Brasil', tipo: 'cnpj' as const, valor: '00.000.000/0001-91', descricao: 'Sociedade de Economia Mista', ativo: true, ordem: 1 },
   { id: 'qd-2', label: 'Magazine Luiza', tipo: 'cnpj' as const, valor: '47.960.950/0001-21', descricao: 'Varejo & E-commerce S.A.', ativo: true, ordem: 2 },
-  { id: 'qd-3', label: 'Lunna Doces (MEI)', tipo: 'cnpj' as const, valor: '40.106.414/0001-14', descricao: 'MEI / São Luís MA', ativo: true, ordem: 3 },
-  { id: 'qd-4', label: 'Meiry Ellen Sousa de Jesus', tipo: 'nome' as const, valor: 'Meiry Ellen Sousa de Jesus', descricao: 'Pessoa Física / Titular MEI', ativo: true, ordem: 4 },
-  { id: 'qd-5', label: 'Luiza Helena Trajano', tipo: 'nome' as const, valor: 'Luiza Helena Trajano', descricao: 'Pessoa Física / Administradora', ativo: true, ordem: 5 }
+  { id: 'qd-3', label: 'Petrobras S.A.', tipo: 'cnpj' as const, valor: '33.000.167/0001-01', descricao: 'Energia & Petróleo / Rio de Janeiro', ativo: true, ordem: 3 },
+  { id: 'qd-4', label: 'Nubank (Nu Pagamentos)', tipo: 'cnpj' as const, valor: '18.236.120/0001-58', descricao: 'Instituição de Pagamento / Fintech', ativo: true, ordem: 4 },
+  { id: 'qd-5', label: 'Google Brasil Internet', tipo: 'cnpj' as const, valor: '06.990.590/0001-23', descricao: 'Serviços de Tecnologia / São Paulo', ativo: true, ordem: 5 },
+  { id: 'qd-6', label: 'Luiza Helena Trajano', tipo: 'nome' as const, valor: 'Luiza Helena Trajano', descricao: 'Pessoa Física / Administradora', ativo: true, ordem: 6 },
+  { id: 'qd-7', label: 'Abimael Brandão', tipo: 'nome' as const, valor: 'Abimael Brandão', descricao: 'Pessoa Física / Executivo & Administrador', ativo: true, ordem: 7 }
 ];
 
 export const initialQuickDemos = INITIAL_QUICK_DEMOS;

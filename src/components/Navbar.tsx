@@ -9,7 +9,9 @@ import {
   Moon, 
   Sun,
   Laptop,
-  ChevronDown
+  ChevronDown,
+  Sparkles,
+  Infinity as InfinityIcon
 } from 'lucide-react';
 import { Usuario, ThemePreference } from '../types';
 
@@ -86,19 +88,19 @@ export const Navbar: React.FC<NavbarProps> = ({
               Consulta Premium <span style={{ color: 'var(--accent)' }}>360°</span>
             </span>
             <span 
-              className="hidden sm:inline-flex items-center gap-1 text-[10px] font-semibold tracking-wide px-2 py-0.5 rounded-full border"
+              className="hidden sm:inline-flex items-center gap-1 text-[10px] font-bold tracking-wide px-2 py-0.5 rounded-full border"
               style={{
                 backgroundColor: 'var(--accent-subtle)',
                 borderColor: 'var(--accent)',
                 color: 'var(--accent)'
               }}
             >
-              <ShieldCheck className="w-3 h-3" />
-              Fontes Oficiais
+              <Sparkles className="w-3 h-3" />
+              Versão Ilimitada
             </span>
           </div>
           <p className="text-[11px] hidden sm:block font-normal" style={{ color: 'var(--text-secondary)' }}>
-            Inteligência Cadastral e Empresarial Consolidada
+            Acesso Total Desbloqueado • Fontes Oficiais 360°
           </p>
         </div>
       </div>
@@ -134,21 +136,22 @@ export const Navbar: React.FC<NavbarProps> = ({
 
       {/* Right Controls */}
       <div className="flex items-center gap-2 sm:gap-3">
-        {/* Credits Badge */}
+        {/* Unlimited Access Badge */}
         <div 
-          className="flex items-center gap-2 px-3 py-1.5 rounded-2xl border"
+          className="flex items-center gap-2 px-3 py-1.5 rounded-2xl border shadow-xs"
           style={{
-            backgroundColor: 'var(--surface-secondary)',
-            borderColor: 'var(--border)'
+            backgroundColor: 'var(--accent-subtle)',
+            borderColor: 'var(--accent)'
           }}
+          title="Versão Ilimitada: você possui acesso total a todas as consultas, recursos de IA e exportações."
         >
-          <Coins className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+          <InfinityIcon className="w-4 h-4 shrink-0" style={{ color: 'var(--accent)' }} />
           <div className="text-right">
-            <span className="text-xs font-bold block leading-tight" style={{ color: 'var(--text-primary)' }}>
-              {remainingCredits}
+            <span className="text-xs font-black block leading-tight tracking-tight" style={{ color: 'var(--text-primary)' }}>
+              Ilimitado
             </span>
-            <span className="text-[9px] block leading-none font-medium" style={{ color: 'var(--text-secondary)' }}>
-              créditos
+            <span className="text-[9px] block leading-none font-bold" style={{ color: 'var(--accent)' }}>
+              Acesso Total
             </span>
           </div>
         </div>
