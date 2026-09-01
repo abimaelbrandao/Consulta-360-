@@ -367,5 +367,52 @@ Tratamento estritamente alinhado à Lei Geral de Proteção de Dados (Lei 13.709
   async getAuditLogs(): Promise<LogAuditoria[]> {
     const res = await fetch('/api/audit-logs');
     return res.json();
+  },
+
+  async getSearchDiagnostics(): Promise<{
+    reports: any[];
+    latestReport?: any;
+    total: number;
+  }> {
+    const res = await fetch('/api/search/diagnostics');
+    if (!res.ok) throw new Error('Falha ao obter diagnósticos de pesquisa.');
+    return res.json();
+  },
+
+  async testProviderQuery(payload: {
+    providerId: string;
+    termo: string;
+    tipo?: string;
+  }): Promise<{
+    providerId: string;
+    providerNome: string;
+    termoConsultado: string;
+    tipoConsulta: string;
+    sucesso: boolean;
+    status: string;
+    httpStatus?: number;
+    latenciaMs: number;
+    mensagem: string;
+    dataHora: string;
+    rawResponse?: any;
+    normalizedData?: any;
+    erroDetalhes?: string;
+  }> {
+    const res = await fetch('/api/providers/test-query', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.error || 'Erro ao executar teste de provedor.');
+    }
+    return res.json();
+  },
+
+  async clearInvalidCache(): Promise<{ success: boolean; clearedCount: number; message: string }> {
+    const res = await fetch('/api/cache/clear-invalid', { method: 'POST' });
+    if (!res.ok) throw new Error('Falha ao limpar cache.');
+    return res.json();
   }
 };

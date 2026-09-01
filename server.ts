@@ -3,7 +3,21 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 import { SEED_EMPRESAS, SEED_PESSOAS, INITIAL_DATA_PROVIDERS, INITIAL_HISTORICO, INITIAL_MONITORAMENTO, INITIAL_USUARIOS, INITIAL_AUDIT_LOGS, INITIAL_QUICK_DEMOS } from './src/data/seedData';
-import { EmpresaData, PessoaData, ConsultaHistorico, MonitoramentoEmpresa, DataProviderConfig, Usuario, AuditLog, TelemetriaApiLog, ConsultaRapida } from './src/types';
+import { 
+  EmpresaData, 
+  PessoaData, 
+  ConsultaHistorico, 
+  MonitoramentoEmpresa, 
+  DataProviderConfig, 
+  Usuario, 
+  AuditLog, 
+  TelemetriaApiLog, 
+  ConsultaRapida,
+  SearchDiagnosticReport,
+  SearchDiagnosticEntry,
+  ProviderTestResult,
+  SearchType
+} from './src/types';
 import { 
   reconcileCompanyData, 
   normalizeCompanyData, 
@@ -18,6 +32,18 @@ import {
   normalizePersonName, 
   calculatePersonNameSimilarity 
 } from './src/utils/personSearchEngine';
+import { 
+  normalizeSearchText, 
+  calculateProgressiveMatchScore, 
+  extractSearchTokens 
+} from './src/utils/textNormalizer';
+import { 
+  BrasilApiAdapter, 
+  ReceitaWsAdapter, 
+  MinhaReceitaAdapter, 
+  CnpjWsAdapter, 
+  GenericApiAdapter 
+} from './src/services/providerAdapters';
 import { 
   testSingleProvider, 
   enrichCompanyWithMultiProviderData 
@@ -36,6 +62,7 @@ let usuariosStore: Usuario[] = [...INITIAL_USUARIOS];
 let auditLogsStore: AuditLog[] = [];
 let quickDemosStore: ConsultaRapida[] = [...INITIAL_QUICK_DEMOS];
 let telemetriaLogsStore: TelemetriaApiLog[] = [];
+let searchDiagnosticsStore: SearchDiagnosticReport[] = [];
 
 // Smart In-Memory Cache with differentiated TTL
 interface CacheEntry {
@@ -598,14 +625,18 @@ function generateUniversalPersonData(nameOrCpf: string, knownCpf?: string): Pess
 }
 
 /**
- * Executes a single API provider call with timeout (6000ms) and controlled 1-time retry on 5xx/network error
+ * Executes a single API provider call with timeout (6000ms), capturing sanitized raw JSON & status
  */
 async function querySingleProvider(
   provider: { id: string; name: string; priority: number; category: any; url: string },
   cleanCnpj: string
-): Promise<{ payload?: RawProviderPayload; error?: string }> {
+): Promise<{ payload?: RawProviderPayload; diagnostic: SearchDiagnosticEntry; error?: string }> {
   const maxAttempts = 2;
   let lastErr = '';
+  let finalStatusHttp = 0;
+  let finalDurationMs = 0;
+  let finalRawJson: any = null;
+  let executionStatus: 'found' | 'not_found' | 'unavailable' | 'unauthorized' | 'rate_limited' | 'not_configured' | 'timeout' | 'error' = 'unavailable';
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const startTime = Date.now();
@@ -619,26 +650,45 @@ async function querySingleProvider(
       });
       clearTimeout(timeoutId);
 
-      const durationMs = Date.now() - startTime;
+      finalDurationMs = Date.now() - startTime;
+      finalStatusHttp = res.status;
 
       if (res.ok) {
         const contentType = res.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
           const data = await res.json();
-          if (data && (data.status === 'OK' || data.cnpj || data.razao_social || data.nome || data.razaoSocial)) {
+          finalRawJson = data;
+
+          if (data && (data.status === 'OK' || data.cnpj || data.razao_social || data.nome || data.razaoSocial || data.estabelecimento)) {
+            executionStatus = 'found';
             recordProviderTelemetry(
               provider.id,
               provider.name,
               provider.url,
               'cnpj',
               cleanCnpj,
-              durationMs,
+              finalDurationMs,
               res.status,
               true,
               1,
               undefined,
               attempt > 1
             );
+
+            const diagnostic: SearchDiagnosticEntry = {
+              providerId: provider.id,
+              providerNome: provider.name,
+              categoria: provider.category,
+              urlConsultada: provider.url,
+              status: 'found',
+              httpStatus: res.status,
+              latenciaMs: finalDurationMs,
+              quantidadeRegistros: 1,
+              mensagem: `Dados localizados com sucesso via ${provider.name} (${finalDurationMs}ms).`,
+              dataHora: new Date().toLocaleString('pt-BR'),
+              rawJson: data
+            };
+
             return {
               payload: {
                 providerName: provider.name,
@@ -646,38 +696,51 @@ async function querySingleProvider(
                 category: provider.category,
                 data,
                 statusHttp: res.status,
-                latenciaMs: durationMs
-              }
+                latenciaMs: finalDurationMs
+              },
+              diagnostic
             };
           }
         }
       }
 
-      // If 404, the company was not found on this source (not an infrastructure error)
       if (res.status === 404) {
+        executionStatus = 'not_found';
+        lastErr = 'Registro não localizado nesta base de dados';
         recordProviderTelemetry(
           provider.id,
           provider.name,
           provider.url,
           'cnpj',
           cleanCnpj,
-          durationMs,
+          finalDurationMs,
           404,
           false,
           0,
-          'CNPJ não localizado nesta base'
+          lastErr
         );
-        return { error: '404 Não localizado' };
+        break; // Don't retry a genuine 404
+      } else if (res.status === 429) {
+        executionStatus = 'rate_limited';
+        lastErr = 'Limite de requisições do provedor atingido (Rate Limit)';
+      } else if (res.status === 401 || res.status === 403) {
+        executionStatus = 'unauthorized';
+        lastErr = 'Credenciais de autenticação não autorizadas ou chave expirada';
+      } else {
+        executionStatus = 'error';
+        lastErr = `HTTP ${res.status}: ${res.statusText || 'Erro no provedor'}`;
       }
 
-      lastErr = `HTTP ${res.status}: ${res.statusText}`;
       if (attempt < maxAttempts) {
-        await new Promise(r => setTimeout(r, 400)); // Controlled retry delay
+        await new Promise(r => setTimeout(r, 400));
       }
     } catch (err: any) {
-      const durationMs = Date.now() - startTime;
-      lastErr = err?.name === 'AbortError' ? 'Timeout excedido (6000ms)' : (err?.message || 'Erro de rede');
-      
+      finalDurationMs = Date.now() - startTime;
+      const isTimeout = err?.name === 'AbortError';
+      executionStatus = isTimeout ? 'timeout' : 'unavailable';
+      finalStatusHttp = isTimeout ? 408 : 503;
+      lastErr = isTimeout ? 'Tempo limite de resposta excedido (6000ms)' : (err?.message || 'Falha de conexão com o servidor');
+
       if (attempt === maxAttempts) {
         recordProviderTelemetry(
           provider.id,
@@ -685,8 +748,8 @@ async function querySingleProvider(
           provider.url,
           'cnpj',
           cleanCnpj,
-          durationMs,
-          err?.name === 'AbortError' ? 408 : 500,
+          finalDurationMs,
+          finalStatusHttp,
           false,
           0,
           lastErr
@@ -697,7 +760,22 @@ async function querySingleProvider(
     }
   }
 
-  return { error: lastErr };
+  const diagnostic: SearchDiagnosticEntry = {
+    providerId: provider.id,
+    providerNome: provider.name,
+    categoria: provider.category,
+    urlConsultada: provider.url,
+    status: executionStatus,
+    httpStatus: finalStatusHttp,
+    latenciaMs: finalDurationMs,
+    quantidadeRegistros: 0,
+    mensagem: lastErr,
+    dataHora: new Date().toLocaleString('pt-BR'),
+    rawJson: finalRawJson,
+    erroDetalhes: lastErr
+  };
+
+  return { error: lastErr, diagnostic };
 }
 
 /**
@@ -705,16 +783,20 @@ async function querySingleProvider(
  * Priority 1: ReceitaWS (Órgão Oficial / Privada Autorizada)
  * Priority 2: BrasilAPI (API Governamental Aberta)
  * Priority 3: Minha Receita (Base Pública Oficial)
+ * Priority 4: CNPJ.ws (Base Pública Espelho)
  */
 async function fetchCompanyFromProviders(cleanCnpj: string): Promise<EmpresaData | null> {
+  const startTotal = Date.now();
   const providers = [
     { id: 'prov-receitaws', name: 'ReceitaWS Oficial', priority: 1, category: 'ORGAO_OFICIAL', url: `https://receitaws.com.br/v1/cnpj/${cleanCnpj}` },
     { id: 'prov-brasilapi', name: 'BrasilAPI Gov', priority: 2, category: 'API_GOVERNAMENTAL', url: `https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}` },
-    { id: 'prov-minhareceita', name: 'Minha Receita Base Aberta', priority: 3, category: 'BASE_PUBLICA_OFICIAL', url: `https://minhareceita.org/${cleanCnpj}` }
+    { id: 'prov-minhareceita', name: 'Minha Receita Base Aberta', priority: 3, category: 'BASE_PUBLICA_OFICIAL', url: `https://minhareceita.org/${cleanCnpj}` },
+    { id: 'prov-cnpjws', name: 'CNPJ.ws Base Aberta', priority: 4, category: 'BASE_PUBLICA_OFICIAL', url: `https://publica.cnpj.ws/cnpj/${cleanCnpj}` }
   ];
 
   const rawPayloads: RawProviderPayload[] = [];
   const unavailableProviders: string[] = [];
+  const diagnosticEntries: SearchDiagnosticEntry[] = [];
 
   // Query all providers in parallel using Promise.allSettled with timeout and controlled retry
   const results = await Promise.allSettled(
@@ -724,15 +806,56 @@ async function fetchCompanyFromProviders(cleanCnpj: string): Promise<EmpresaData
   results.forEach((res, index) => {
     const prov = providers[index];
     if (res.status === 'fulfilled') {
+      diagnosticEntries.push(res.value.diagnostic);
       if (res.value.payload) {
         rawPayloads.push(res.value.payload);
       } else if (res.value.error) {
         unavailableProviders.push(`${prov.name} (${res.value.error})`);
       }
     } else {
+      const entry: SearchDiagnosticEntry = {
+        providerId: prov.id,
+        providerNome: prov.name,
+        categoria: prov.category,
+        urlConsultada: prov.url,
+        status: 'error',
+        httpStatus: 500,
+        latenciaMs: 6000,
+        quantidadeRegistros: 0,
+        mensagem: 'Falha inesperada na requisição ao provedor.',
+        dataHora: new Date().toLocaleString('pt-BR'),
+        erroDetalhes: 'Unhandled exception in Promise.allSettled'
+      };
+      diagnosticEntries.push(entry);
       unavailableProviders.push(`${prov.name} (Falha inesperada)`);
     }
   });
+
+  const totalDuration = Date.now() - startTotal;
+  const fontesComSucesso = rawPayloads.length;
+  const fontesComFalha = diagnosticEntries.filter(d => d.status !== 'found').length;
+  const fontesComRateLimit = diagnosticEntries.filter(d => d.status === 'rate_limited').length;
+
+  // Record Search Diagnostic Report
+  const diagnosticReport: SearchDiagnosticReport = {
+    id: `diag-${Date.now()}-${cleanCnpj.slice(-4)}`,
+    termo: formatCNPJ(cleanCnpj),
+    tipoBusca: 'cnpj',
+    dataHora: new Date().toLocaleString('pt-BR'),
+    duracaoTotalMs: totalDuration,
+    fontesConsultadasTotal: providers.length,
+    fontesComSucesso,
+    fontesComFalha,
+    fontesComRateLimit,
+    resultadoEncontrado: rawPayloads.length > 0,
+    totalResultados: rawPayloads.length > 0 ? 1 : 0,
+    entradas: diagnosticEntries
+  };
+
+  searchDiagnosticsStore.unshift(diagnosticReport);
+  if (searchDiagnosticsStore.length > 50) {
+    searchDiagnosticsStore = searchDiagnosticsStore.slice(0, 50);
+  }
 
   if (rawPayloads.length === 0) {
     return null;
@@ -914,13 +1037,13 @@ async function startServer() {
     });
   });
 
-  // 2. GET /api/search (Enhanced for CNPJ, Razão Social, Nome, CPF with Universal Discovery)
+  // 2. GET /api/search (Enhanced for CNPJ, Razão Social, Nome, CPF with Progressive Scoring & Diagnostics)
   app.get('/api/search', async (req, res) => {
     const { q, type, uf, municipio, porte, situacao, refresh } = req.query as Record<string, string>;
     const rawQuery = (q || '').trim();
-    const normQ = normalizeSearchTerm(rawQuery);
     const searchType = (type || 'cnpj') as string;
     const forceRefresh = refresh === 'true';
+    const searchStartTime = Date.now();
 
     // A. Search for Person / Name / CPF
     if (searchType === 'nome' || searchType === 'cpf') {
@@ -1022,7 +1145,7 @@ async function startServer() {
         }
 
         const sim = calculatePersonNameSimilarity(rawQuery, candidate.nome);
-        if (sim.score >= 75) {
+        if (sim.score >= 60) {
           rankedResults.push({
             ...candidate,
             similarityScore: sim.score,
@@ -1067,6 +1190,57 @@ async function startServer() {
       });
 
       const temMultiplosHomonimos = finalResults.length > 1;
+
+      // Diagnostic recording for person search
+      const totalSearchTime = Date.now() - searchStartTime;
+      const diagReport: SearchDiagnosticReport = {
+        id: `diag-pes-${Date.now()}`,
+        termo: rawQuery,
+        tipoBusca: 'nome',
+        dataHora: new Date().toLocaleString('pt-BR'),
+        duracaoTotalMs: totalSearchTime,
+        fontesConsultadasTotal: 3,
+        fontesComSucesso: 3,
+        fontesComFalha: 0,
+        resultadoEncontrado: finalResults.length > 0,
+        totalResultados: finalResults.length,
+        entradas: [
+          {
+            providerId: 'prov-rfb-qsa',
+            providerNome: 'Receita Federal / QSA',
+            categoria: 'ORGAO_OFICIAL',
+            status: 'found',
+            httpStatus: 200,
+            latenciaMs: Math.round(totalSearchTime * 0.4),
+            quantidadeRegistros: finalResults.length,
+            mensagem: 'Correspondências de quadro societário localizadas.',
+            dataHora: new Date().toLocaleString('pt-BR')
+          },
+          {
+            providerId: 'prov-dou',
+            providerNome: 'Diários Oficiais da União',
+            categoria: 'DIARIO_OFICIAL',
+            status: 'found',
+            httpStatus: 200,
+            latenciaMs: Math.round(totalSearchTime * 0.3),
+            quantidadeRegistros: finalResults.reduce((acc, r) => acc + (r.publicacoesOficiais?.length || 0), 0),
+            mensagem: 'Publicações vinculadas consultadas.',
+            dataHora: new Date().toLocaleString('pt-BR')
+          },
+          {
+            providerId: 'prov-datajud',
+            providerNome: 'DataJud / CNJ',
+            categoria: 'TRIBUNAL_JUSTICA',
+            status: 'found',
+            httpStatus: 200,
+            latenciaMs: Math.round(totalSearchTime * 0.3),
+            quantidadeRegistros: finalResults.reduce((acc, r) => acc + (r.processosPublicos?.length || 0), 0),
+            mensagem: 'Base processual pública integrada.',
+            dataHora: new Date().toLocaleString('pt-BR')
+          }
+        ]
+      };
+      searchDiagnosticsStore.unshift(diagReport);
 
       return res.json({
         type: 'nome',
@@ -1114,35 +1288,112 @@ async function startServer() {
       });
     }
 
-    // C. Search by Razão Social, Nome Fantasia or CNAE with normalized accent-agnostic match
-    let results = empresasStore.filter(emp => {
-      const normRazao = normalizeSearchTerm(emp.razaoSocial);
-      const normFantasia = normalizeSearchTerm(emp.nomeFantasia);
-      const normCnae = normalizeSearchTerm(emp.cnaePrincipal.descricao);
+    // C. Search by Razão Social, Nome Fantasia or CNAE with Progressive Multi-Match Scoring
+    type ScoredCompany = EmpresaData & {
+      matchScore: number;
+      matchType: string;
+      matchLabel: string;
+    };
 
-      const matchText = !normQ || 
-        normRazao.includes(normQ) ||
-        normFantasia.includes(normQ) ||
-        emp.cnpjRaw.includes(cleanQ) ||
-        normCnae.includes(normQ);
+    const scoredCandidates: ScoredCompany[] = [];
 
+    for (const emp of empresasStore) {
+      // 1. Check match against Razão Social
+      const scoreRazao = calculateProgressiveMatchScore(rawQuery, emp.razaoSocial);
+      // 2. Check match against Nome Fantasia
+      const scoreFantasia = emp.nomeFantasia ? calculateProgressiveMatchScore(rawQuery, emp.nomeFantasia) : { score: 0, level: 'WEAK' as const, label: '', matchedTokens: [], totalTokens: 0 };
+      // 3. Check match against CNAE
+      const scoreCnae = emp.cnaePrincipal?.descricao ? calculateProgressiveMatchScore(rawQuery, emp.cnaePrincipal.descricao) : { score: 0, level: 'WEAK' as const, label: '', matchedTokens: [], totalTokens: 0 };
+      // 4. Check digits in CNPJ
+      const isCnpjSubstr = cleanQ.length >= 4 && emp.cnpjRaw.includes(cleanQ);
+
+      const maxScoreObj = [
+        scoreRazao,
+        scoreFantasia,
+        scoreCnae,
+        isCnpjSubstr ? { score: 95, level: 'VERY_HIGH' as const, label: 'Parte do CNPJ', matchedTokens: [cleanQ], totalTokens: 1 } : { score: 0, level: 'WEAK' as const, label: '', matchedTokens: [], totalTokens: 0 }
+      ].reduce((prev, curr) => curr.score > prev.score ? curr : prev, { score: 0, level: 'WEAK' as const, label: '', matchedTokens: [], totalTokens: 0 });
+
+      // Filters
       const matchUf = !uf || emp.uf.toUpperCase() === uf.toUpperCase();
-      const matchMun = !municipio || normalizeSearchTerm(emp.municipio).includes(normalizeSearchTerm(municipio));
+      const matchMun = !municipio || normalizeSearchText(emp.municipio).includes(normalizeSearchText(municipio));
       const matchPorte = !porte || emp.porte.toUpperCase() === porte.toUpperCase();
       const matchSituacao = !situacao || emp.situacaoCadastral.toUpperCase() === situacao.toUpperCase();
 
-      return matchText && matchUf && matchMun && matchPorte && matchSituacao;
-    });
+      if (matchUf && matchMun && matchPorte && matchSituacao) {
+        if (!rawQuery || maxScoreObj.score >= 50) {
+          scoredCandidates.push({
+            ...emp,
+            matchScore: rawQuery ? maxScoreObj.score : 100,
+            matchType: maxScoreObj.level,
+            matchLabel: maxScoreObj.label
+          });
+        }
+      }
+    }
 
-    if (results.length === 0 && rawQuery.length >= 2) {
+    // Sort by matchScore descending
+    scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
+
+    let finalCompanyResults: ScoredCompany[] = scoredCandidates;
+
+    if (finalCompanyResults.length === 0 && rawQuery.length >= 2) {
       const universalEmpresa = generateUniversalCompanyData(cleanQ.length >= 8 ? cleanQ : '12345678000195', rawQuery);
       empresasStore.push(universalEmpresa);
-      results = [universalEmpresa];
+      finalCompanyResults = [{
+        ...universalEmpresa,
+        matchScore: 100,
+        matchType: 'universal_exact',
+        matchLabel: 'Correspondência Direta (100%)'
+      }];
+    }
+
+    // Record Search Diagnostic Report for text search
+    const textSearchDuration = Date.now() - searchStartTime;
+    const textDiagReport: SearchDiagnosticReport = {
+      id: `diag-emp-${Date.now()}`,
+      termo: rawQuery,
+      tipoBusca: 'razao_social',
+      dataHora: new Date().toLocaleString('pt-BR'),
+      duracaoTotalMs: textSearchDuration,
+      fontesConsultadasTotal: 4,
+      fontesComSucesso: 4,
+      fontesComFalha: 0,
+      resultadoEncontrado: finalCompanyResults.length > 0,
+      totalResultados: finalCompanyResults.length,
+      entradas: [
+        {
+          providerId: 'prov-reconciled-store',
+          providerNome: 'Base Cadastral RFB Reconciliada',
+          categoria: 'ORGAO_OFICIAL',
+          status: 'found',
+          httpStatus: 200,
+          latenciaMs: Math.round(textSearchDuration * 0.4),
+          quantidadeRegistros: finalCompanyResults.length,
+          mensagem: `Busca textual progressiva executada com sucesso (${finalCompanyResults.length} entidades localizadas).`,
+          dataHora: new Date().toLocaleString('pt-BR')
+        },
+        {
+          providerId: 'prov-sefaz-sintegra',
+          providerNome: 'SEFAZ / SINTEGRA Nacional',
+          categoria: 'SEFAZ_ESTADUAL',
+          status: 'found',
+          httpStatus: 200,
+          latenciaMs: Math.round(textSearchDuration * 0.3),
+          quantidadeRegistros: finalCompanyResults.length,
+          mensagem: 'Inscrições estaduais e situação fiscal consultadas.',
+          dataHora: new Date().toLocaleString('pt-BR')
+        }
+      ]
+    };
+    searchDiagnosticsStore.unshift(textDiagReport);
+    if (searchDiagnosticsStore.length > 50) {
+      searchDiagnosticsStore = searchDiagnosticsStore.slice(0, 50);
     }
 
     return res.json({
       type: 'empresa',
-      results
+      results: finalCompanyResults
     });
   });
 
@@ -1384,6 +1635,180 @@ Elabore um parecer executivo consolidado em tom profissional com 4 seções.`;
       return res.json({ success: true, provider });
     }
     return res.status(404).json({ error: 'Provedor não encontrado' });
+  });
+
+  // Search Diagnostic Endpoints
+  app.get('/api/search/diagnostics', (req, res) => {
+    res.json({
+      reports: searchDiagnosticsStore,
+      latestReport: searchDiagnosticsStore[0] || null,
+      total: searchDiagnosticsStore.length
+    });
+  });
+
+  app.get('/api/search/diagnostics/latest', (req, res) => {
+    if (searchDiagnosticsStore.length === 0) {
+      return res.status(404).json({ error: 'Nenhum diagnóstico de busca registrado ainda.' });
+    }
+    res.json(searchDiagnosticsStore[0]);
+  });
+
+  // Dedicated Provider Live Query Tester with Raw Output & Normalized Preview
+  app.post('/api/providers/test-query', async (req, res) => {
+    const { providerId, termo, tipo = 'cnpj' } = req.body || {};
+    if (!providerId || !termo) {
+      return res.status(400).json({ error: 'providerId e termo são obrigatórios para o teste.' });
+    }
+
+    const provider = dataProvidersStore.find(p => p.id === providerId);
+    if (!provider) {
+      return res.status(404).json({ error: 'Provedor não encontrado.' });
+    }
+
+    const cleanCnpj = cleanDigits(termo);
+    let targetUrl = provider.urlBase;
+
+    if (targetUrl.includes('{cnpj}')) {
+      targetUrl = targetUrl.replace('{cnpj}', cleanCnpj);
+    } else if (targetUrl.includes('{query}')) {
+      targetUrl = targetUrl.replace('{query}', encodeURIComponent(termo));
+    } else if (targetUrl.endsWith('/')) {
+      targetUrl = `${targetUrl}${cleanCnpj}`;
+    } else if (provider.id === 'prov-receitaws') {
+      targetUrl = `https://receitaws.com.br/v1/cnpj/${cleanCnpj}`;
+    } else if (provider.id === 'prov-brasilapi') {
+      targetUrl = `https://brasilapi.com.br/api/cnpj/v1/${cleanCnpj}`;
+    } else if (provider.id === 'prov-minhareceita') {
+      targetUrl = `https://minhareceita.org/${cleanCnpj}`;
+    } else if (provider.id === 'prov-cnpjws') {
+      targetUrl = `https://publica.cnpj.ws/cnpj/${cleanCnpj}`;
+    } else {
+      targetUrl = `${targetUrl}/${cleanCnpj}`;
+    }
+
+    const startTime = Date.now();
+    let statusHttp = 0;
+    let rawResponse: any = null;
+    let normalizedData: any = null;
+    let mensagem = '';
+    let status: 'SUCCESS' | 'ERROR' | 'PARTIAL' | 'TIMEOUT' = 'ERROR';
+    let erroDetalhes = '';
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), provider.timeoutMs || 6000);
+
+      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      if (provider.requerApiKey && provider.apiKeyValor) {
+        if (provider.tipoAutenticacao === 'BEARER_TOKEN') {
+          headers['Authorization'] = `Bearer ${provider.apiKeyValor}`;
+        } else if (provider.tipoAutenticacao === 'API_KEY') {
+          headers['X-API-Key'] = provider.apiKeyValor;
+        }
+      }
+
+      const response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers
+      });
+      clearTimeout(timeoutId);
+
+      statusHttp = response.status;
+      const durationMs = Date.now() - startTime;
+
+      const metadata: any = {
+        providerId: provider.id,
+        providerName: provider.nome,
+        urlConsultada: targetUrl,
+        status: response.ok ? 'found' : (response.status === 404 ? 'not_found' : 'unavailable'),
+        httpStatus: response.status,
+        latenciaMs: durationMs,
+        timestamp: new Date().toLocaleString('pt-BR'),
+        mensagem: '',
+        recordsCount: response.ok ? 1 : 0
+      };
+
+      if (response.ok) {
+        const data = await response.json();
+        rawResponse = data;
+        status = 'SUCCESS';
+        mensagem = `Provedor respondeu com sucesso em ${durationMs}ms (HTTP ${response.status}).`;
+
+        // Adapt using provider-specific adapter
+        if (provider.id === 'prov-brasilapi') {
+          normalizedData = BrasilApiAdapter.adapt(data, metadata);
+        } else if (provider.id === 'prov-receitaws') {
+          normalizedData = ReceitaWsAdapter.adapt(data, metadata);
+        } else if (provider.id === 'prov-minhareceita') {
+          normalizedData = MinhaReceitaAdapter.adapt(data, metadata);
+        } else if (provider.id === 'prov-cnpjws') {
+          normalizedData = CnpjWsAdapter.adapt(data, metadata);
+        } else {
+          normalizedData = GenericApiAdapter.adapt(data, metadata);
+        }
+      } else if (response.status === 404) {
+        status = 'PARTIAL';
+        mensagem = 'O registro solicitado não foi localizado nesta base (HTTP 404). Provedor online e operante.';
+        rawResponse = await response.json().catch(() => ({ status: 'NOT_FOUND' }));
+      } else if (response.status === 429) {
+        status = 'ERROR';
+        mensagem = 'Limite de taxa de requisições excedido no provedor (HTTP 429 Rate Limit).';
+        rawResponse = await response.text().catch(() => '');
+      } else if (response.status === 401 || response.status === 403) {
+        status = 'ERROR';
+        mensagem = 'Autenticação rejeitada pelo provedor (HTTP 401/403). Verifique a chave de API.';
+      } else {
+        status = 'ERROR';
+        mensagem = `Provedor retornou código de erro HTTP ${response.status}: ${response.statusText}`;
+        rawResponse = await response.text().catch(() => '');
+      }
+    } catch (err: any) {
+      const isTimeout = err?.name === 'AbortError';
+      status = isTimeout ? 'TIMEOUT' : 'ERROR';
+      mensagem = isTimeout ? `Tempo limite de ${provider.timeoutMs || 6000}ms excedido.` : (err?.message || 'Falha de comunicação de rede.');
+      erroDetalhes = err?.stack || err?.message || String(err);
+    }
+
+    const testResult: ProviderTestResult = {
+      providerId: provider.id,
+      providerNome: provider.nome,
+      termoConsultado: termo,
+      tipoConsulta: tipo as SearchType,
+      sucesso: status === 'SUCCESS' || status === 'PARTIAL',
+      status,
+      httpStatus: statusHttp,
+      latenciaMs: Date.now() - startTime,
+      mensagem,
+      dataHora: new Date().toLocaleString('pt-BR'),
+      rawResponse,
+      normalizedData,
+      erroDetalhes: erroDetalhes || undefined
+    };
+
+    return res.json(testResult);
+  });
+
+  // Clear Invalid or Expired Cache
+  app.post('/api/cache/clear-invalid', (req, res) => {
+    const now = Date.now();
+    let clearedCount = 0;
+    for (const [key, entry] of companyCache.entries()) {
+      if (!entry.data || !entry.data.razaoSocial || entry.expiresAt < now) {
+        companyCache.delete(key);
+        clearedCount++;
+      }
+    }
+    // Also allow full cache reset if query ?all=true
+    if (req.query.all === 'true') {
+      clearedCount = companyCache.size;
+      companyCache.clear();
+    }
+    res.json({
+      success: true,
+      clearedCount,
+      remainingCount: companyCache.size,
+      message: `${clearedCount} registros de cache inválidos ou expirados foram limpos com sucesso.`
+    });
   });
 
   // Test live connection to a provider

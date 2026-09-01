@@ -36,6 +36,8 @@ import {
 } from '../types';
 import { apiService } from '../services/api';
 import { CATEGORY_LABELS, MUNICIPAL_PROVIDER_REGISTRY } from '../services/dataProviderHub';
+import { SearchDiagnosticView } from './SearchDiagnosticView';
+import { ProviderTesterView } from './ProviderTesterView';
 
 export const IntegrationsView: React.FC = () => {
   const [providers, setProviders] = useState<ProvedorApi[]>([]);
@@ -57,7 +59,7 @@ export const IntegrationsView: React.FC = () => {
   const [stateFilter, setStateFilter] = useState<'TODAS' | IntegrationState>('TODAS');
   const [categoryFilter, setCategoryFilter] = useState<string>('TODAS');
   const [searchFilter, setSearchFilter] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<'HUB' | 'MUNICIPAL' | 'TELEMETRIA'>('HUB');
+  const [activeTab, setActiveTab] = useState<'HUB' | 'DIAGNOSTICO' | 'TESTE_AVANCADO' | 'MUNICIPAL' | 'TELEMETRIA'>('HUB');
 
   // Modal State for Add / Edit Provider
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -355,7 +357,7 @@ export const IntegrationsView: React.FC = () => {
 
       {/* Navigation Sub-Tabs */}
       <div 
-        className="flex items-center gap-2 p-1.5 rounded-2xl border shadow-xs"
+        className="flex flex-wrap items-center gap-2 p-1.5 rounded-2xl border shadow-xs"
         style={{
           backgroundColor: 'var(--surface)',
           borderColor: 'var(--border)'
@@ -376,6 +378,34 @@ export const IntegrationsView: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveTab('DIAGNOSTICO')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'DIAGNOSTICO' ? 'shadow-xs' : 'opacity-70 hover:opacity-100'
+          }`}
+          style={{
+            backgroundColor: activeTab === 'DIAGNOSTICO' ? 'var(--surface-secondary)' : 'transparent',
+            color: activeTab === 'DIAGNOSTICO' ? 'var(--accent)' : 'var(--text-secondary)'
+          }}
+        >
+          <Activity className="w-4 h-4" />
+          <span>Diagnóstico de Pesquisas</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('TESTE_AVANCADO')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            activeTab === 'TESTE_AVANCADO' ? 'shadow-xs' : 'opacity-70 hover:opacity-100'
+          }`}
+          style={{
+            backgroundColor: activeTab === 'TESTE_AVANCADO' ? 'var(--surface-secondary)' : 'transparent',
+            color: activeTab === 'TESTE_AVANCADO' ? 'var(--accent)' : 'var(--text-secondary)'
+          }}
+        >
+          <Zap className="w-4 h-4" />
+          <span>Testar Provedor & Raw JSON</span>
+        </button>
+
+        <button
           onClick={() => setActiveTab('MUNICIPAL')}
           className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all ${
             activeTab === 'MUNICIPAL' ? 'shadow-xs' : 'opacity-70 hover:opacity-100'
@@ -386,7 +416,7 @@ export const IntegrationsView: React.FC = () => {
           }}
         >
           <Building2 className="w-4 h-4" />
-          <span>Registro Municipal (Códigos IBGE)</span>
+          <span>Registro Municipal</span>
         </button>
 
         <button
@@ -400,9 +430,17 @@ export const IntegrationsView: React.FC = () => {
           }}
         >
           <Activity className="w-4 h-4" />
-          <span>Telemetria & Logs em Tempo Real ({logs.length})</span>
+          <span>Logs & Telemetria ({logs.length})</span>
         </button>
       </div>
+
+      {activeTab === 'DIAGNOSTICO' && (
+        <SearchDiagnosticView />
+      )}
+
+      {activeTab === 'TESTE_AVANCADO' && (
+        <ProviderTesterView providers={providers} />
+      )}
 
       {activeTab === 'HUB' && (
         <>

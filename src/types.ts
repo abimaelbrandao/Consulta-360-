@@ -174,6 +174,7 @@ export interface EmpresaData {
   telefonePublico?: string;
   emailPublico?: string;
   phones?: string[];
+  telefones?: string[];
   emails?: string[];
   
   // Atividades
@@ -510,3 +511,49 @@ export interface LogAuditoria {
 }
 
 export type AuditLog = LogAuditoria;
+
+export interface SearchDiagnosticEntry {
+  providerId: string;
+  providerNome: string;
+  categoria: string;
+  urlConsultada?: string;
+  status: 'found' | 'not_found' | 'unavailable' | 'unauthorized' | 'rate_limited' | 'not_configured' | 'timeout' | 'error';
+  httpStatus: number;
+  latenciaMs: number;
+  quantidadeRegistros: number;
+  mensagem: string;
+  dataHora: string;
+  rawJson?: any;
+  erroDetalhes?: string;
+}
+
+export interface SearchDiagnosticReport {
+  id: string;
+  termo: string;
+  tipoBusca: SearchType;
+  dataHora: string;
+  duracaoTotalMs: number;
+  fontesConsultadasTotal: number;
+  fontesComSucesso: number;
+  fontesComFalha: number;
+  fontesComRateLimit?: number;
+  resultadoEncontrado: boolean;
+  totalResultados: number;
+  entradas: SearchDiagnosticEntry[];
+}
+
+export interface ProviderTestResult {
+  providerId: string;
+  providerNome: string;
+  termoConsultado: string;
+  tipoConsulta: SearchType;
+  sucesso: boolean;
+  status: 'SUCCESS' | 'PARTIAL' | 'ERROR' | 'ONLINE' | 'OFFLINE' | 'INSTAVEL' | 'AUTH_ERROR' | 'RATE_LIMITED' | 'TIMEOUT';
+  httpStatus?: number;
+  latenciaMs: number;
+  mensagem: string;
+  dataHora: string;
+  rawResponse?: any;
+  normalizedData?: any;
+  erroDetalhes?: string;
+}
