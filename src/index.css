@@ -1,0 +1,188 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-app-bg: var(--background);
+  --color-app-surface: var(--surface);
+  --color-app-surface-secondary: var(--surface-secondary);
+  --color-app-surface-tertiary: var(--surface-tertiary);
+  
+  --color-app-text: var(--text-primary);
+  --color-app-text-secondary: var(--text-secondary);
+  --color-app-text-tertiary: var(--text-tertiary);
+  
+  --color-app-border: var(--border);
+  --color-app-border-subtle: var(--border-subtle);
+  --color-app-border-strong: var(--border-strong);
+  
+  --color-app-input: var(--input-background);
+  --color-app-input-focus: var(--input-focus);
+  --color-app-modal: var(--modal-background);
+  
+  --color-app-accent: var(--accent);
+  --color-app-accent-hover: var(--accent-hover);
+  --color-app-accent-subtle: var(--accent-subtle);
+  
+  --color-app-success: var(--success);
+  --color-app-success-subtle: var(--success-subtle);
+  --color-app-warning: var(--warning);
+  --color-app-warning-subtle: var(--warning-subtle);
+  --color-app-danger: var(--danger);
+  --color-app-danger-subtle: var(--danger-subtle);
+  --color-app-info: var(--info);
+  --color-app-info-subtle: var(--info-subtle);
+}
+
+:root {
+  /* LIGHT MODE TOKENS (Clean, crisp, Apple iOS-inspired) */
+  --background: #f5f5f7;
+  --surface: #ffffff;
+  --surface-secondary: #f2f2f7;
+  --surface-tertiary: #e5e5ea;
+
+  --text-primary: #1d1d1f;
+  --text-secondary: #6e6e73;
+  --text-tertiary: #8e8e93;
+
+  --border: rgba(0, 0, 0, 0.08);
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-strong: rgba(0, 0, 0, 0.16);
+
+  --input-background: #f2f2f7;
+  --input-focus: #ffffff;
+  --modal-background: #ffffff;
+  --modal-backdrop: rgba(0, 0, 0, 0.35);
+
+  --accent: #ff9f0a;
+  --accent-hover: #f59300;
+  --accent-subtle: rgba(255, 159, 10, 0.12);
+
+  --success: #34c759;
+  --success-subtle: rgba(52, 199, 89, 0.12);
+  --warning: #ff9f0a;
+  --warning-subtle: rgba(255, 159, 10, 0.12);
+  --danger: #ff3b30;
+  --danger-subtle: rgba(255, 59, 48, 0.12);
+  --info: #007aff;
+  --info-subtle: rgba(0, 122, 255, 0.12);
+
+  --sidebar-bg: #ffffff;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+  --nav-active-bg: #1d1d1f;
+  --nav-active-text: #ffffff;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+.dark {
+  /* DARK MODE TOKENS (Deep, high-contrast, premium dark) */
+  --background: #0b0b0f;
+  --surface: #16161d;
+  --surface-secondary: #1c1c24;
+  --surface-tertiary: #252530;
+
+  --text-primary: #f5f5f7;
+  --text-secondary: #aeaeb2;
+  --text-tertiary: #8e8e93;
+
+  --border: rgba(255, 255, 255, 0.10);
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.20);
+
+  --input-background: #1c1c24;
+  --input-focus: #252530;
+  --modal-background: #16161d;
+  --modal-backdrop: rgba(0, 0, 0, 0.70);
+
+  --accent: #ff9f0a;
+  --accent-hover: #ffad33;
+  --accent-subtle: rgba(255, 159, 10, 0.18);
+
+  --success: #30d158;
+  --success-subtle: rgba(48, 209, 88, 0.18);
+  --warning: #ffd60a;
+  --warning-subtle: rgba(255, 214, 10, 0.18);
+  --danger: #ff453a;
+  --danger-subtle: rgba(255, 69, 58, 0.18);
+  --info: #0a84ff;
+  --info-subtle: rgba(10, 132, 255, 0.18);
+
+  --sidebar-bg: #121218;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --nav-active-bg: #ff9f0a;
+  --nav-active-text: #0b0b0f;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    letter-spacing: -0.011em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--background);
+    color: var(--text-primary);
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--text-primary);
+    min-height: 100vh;
+    transition: background-color 200ms ease, color 200ms ease;
+  }
+}
+
+/* Custom iOS-like slim translucent scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(142, 142, 147, 0.28);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(142, 142, 147, 0.5);
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+}
+
+/* Smooth card transitions and iOS elevation */
+.ios-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
+  transition: transform 200ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 200ms cubic-bezier(0.16, 1, 0.3, 1), border-color 200ms ease;
+}
+
+.dark .ios-card {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.ios-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06);
+}
+
+.dark .ios-card:hover {
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+}
+
+/* Modal Backdrop */
+.modal-backdrop-overlay {
+  background-color: var(--modal-backdrop);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}

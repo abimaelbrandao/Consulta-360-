@@ -1,0 +1,6 @@
+{
+  "name": "Consulta Premium 360",
+  "description": "Central consolidada de inteligência cadastral e empresarial 360° com fontes públicas oficiais, análise com IA e relatórios executivos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Consulta Premium 360° | Inteligência Cadastral e Empresarial</title>
+    <meta name="description" content="Central consolidada de inteligência cadastral e empresarial 360° com fontes públicas oficiais e análise com IA." />
+    <script>
+      (function() {
+        try {
+          var theme = localStorage.getItem('theme_preference') || 'system';
+          var isDark = theme === 'dark' || (theme === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          if (isDark) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-[#F5F5F7] dark:bg-[#0B0B0F] text-[#1C1C1E] dark:text-[#F2F2F7] antialiased transition-colors duration-200">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
